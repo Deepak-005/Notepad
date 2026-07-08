@@ -1,0 +1,6 @@
+{
+  "name": "Offline Notepad",
+  "description": "A beautiful, fully offline notepad with rich markdown editing, categories, color labels, local backup/restore, PDF/TXT export, and PIN protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
