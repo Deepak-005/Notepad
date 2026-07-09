@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Note
+import com.example.ui.localization.localize
 import com.example.ui.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -34,11 +37,29 @@ fun ArchiveScreen(
     modifier: Modifier = Modifier
 ) {
     val archivedNotes by viewModel.archivedNotes.collectAsState()
+    val appLanguage by viewModel.appLanguage.collectAsState()
+    val activeProfileId by viewModel.activeProfileId.collectAsState()
+    val profiles by viewModel.userProfiles.collectAsState()
+    val activeProfile = profiles.find { it.id == activeProfileId }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Archive", fontWeight = FontWeight.Bold) }
+                title = { Text("archive".localize(appLanguage), fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (activeProfile != null) {
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 16.dp, end = 8.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(android.graphics.Color.parseColor(activeProfile.colorHex))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(activeProfile.emoji, fontSize = 18.sp)
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
@@ -63,14 +84,14 @@ fun ArchiveScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Archive is empty",
+                        text = "no_archived_notes".localize(appLanguage),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Notes you archive will appear here. They won't show in your main dashboard.",
+                        text = "no_archived_notes_desc".localize(appLanguage),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -91,7 +112,8 @@ fun ArchiveScreen(
                             onUnarchive = { viewModel.unarchiveNote(note) },
                             onTrash = { viewModel.trashNote(note) },
                             fontSizeStr = viewModel.settingsManager.fontSize,
-                            fontFamilyStr = viewModel.settingsManager.fontFamily
+                            fontFamilyStr = viewModel.settingsManager.fontFamily,
+                            appLanguage = appLanguage
                         )
                     }
                 }
@@ -108,7 +130,8 @@ fun ArchiveGridItem(
     onUnarchive: () -> Unit,
     onTrash: () -> Unit,
     fontSizeStr: String,
-    fontFamilyStr: String
+    fontFamilyStr: String,
+    appLanguage: String
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val cardBg = getNoteColor(note.colorName)
@@ -135,7 +158,7 @@ fun ArchiveGridItem(
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = note.title.ifEmpty { "Untitled" },
+                    text = note.title.ifEmpty { "untitled".localize(appLanguage) },
                     style = getTitleStyle(fontSizeStr),
                     fontWeight = FontWeight.Bold,
                     fontFamily = getFontFamily(fontFamilyStr),
@@ -189,12 +212,12 @@ fun ArchiveGridItem(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Unarchive") },
+                    text = { Text("unarchive".localize(appLanguage)) },
                     onClick = { onUnarchive(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Unarchive, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete", color = Color.Red) },
+                    text = { Text("delete".localize(appLanguage), color = Color.Red) },
                     onClick = { onTrash(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
                 )

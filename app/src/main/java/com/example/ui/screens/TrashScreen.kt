@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Note
+import com.example.ui.localization.localize
 import com.example.ui.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,19 +34,20 @@ fun TrashScreen(
     modifier: Modifier = Modifier
 ) {
     val trashedNotes by viewModel.trashedNotes.collectAsState()
+    val appLanguage by viewModel.appLanguage.collectAsState()
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Trash Bin", fontWeight = FontWeight.Bold) },
+                title = { Text("trash".localize(appLanguage), fontWeight = FontWeight.Bold) },
                 actions = {
                     if (trashedNotes.isNotEmpty()) {
                         IconButton(
                             onClick = { showEmptyTrashDialog = true },
                             modifier = Modifier.testTag("empty_trash_button")
                         ) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Empty Trash", tint = Color.Red)
+                            Icon(Icons.Default.DeleteSweep, contentDescription = "empty_trash".localize(appLanguage), tint = Color.Red)
                         }
                     }
                 }
@@ -73,14 +75,14 @@ fun TrashScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Trash is empty",
+                        text = "no_trashed_notes".localize(appLanguage),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Notes you delete will stay here. Restore or permanently erase them anytime.",
+                        text = "no_trashed_notes_desc".localize(appLanguage),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -100,7 +102,8 @@ fun TrashScreen(
                             onRestore = { viewModel.restoreNote(note) },
                             onDeletePermanently = { viewModel.deleteNotePermanently(note) },
                             fontSizeStr = viewModel.settingsManager.fontSize,
-                            fontFamilyStr = viewModel.settingsManager.fontFamily
+                            fontFamilyStr = viewModel.settingsManager.fontFamily,
+                            appLanguage = appLanguage
                         )
                     }
                 }
@@ -112,8 +115,8 @@ fun TrashScreen(
     if (showEmptyTrashDialog) {
         AlertDialog(
             onDismissRequest = { showEmptyTrashDialog = false },
-            title = { Text("Empty Trash Bin?") },
-            text = { Text("Are you absolutely sure you want to permanently delete all notes in the trash? This action is offline, final, and cannot be undone.") },
+            title = { Text("empty_trash".localize(appLanguage)) },
+            text = { Text("empty_trash_confirm".localize(appLanguage)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -122,12 +125,12 @@ fun TrashScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
                 ) {
-                    Text("Delete All Permanently")
+                    Text("delete_permanently".localize(appLanguage))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEmptyTrashDialog = false }) {
-                    Text("Cancel")
+                    Text("cancel".localize(appLanguage))
                 }
             }
         )
@@ -141,7 +144,8 @@ fun TrashGridItem(
     onRestore: () -> Unit,
     onDeletePermanently: () -> Unit,
     fontSizeStr: String,
-    fontFamilyStr: String
+    fontFamilyStr: String,
+    appLanguage: String
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val cardBg = getNoteColor(note.colorName)
@@ -168,7 +172,7 @@ fun TrashGridItem(
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = note.title.ifEmpty { "Untitled" },
+                    text = note.title.ifEmpty { "untitled".localize(appLanguage) },
                     style = getTitleStyle(fontSizeStr),
                     fontWeight = FontWeight.Bold,
                     fontFamily = getFontFamily(fontFamilyStr),
@@ -222,12 +226,12 @@ fun TrashGridItem(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Restore Note") },
+                    text = { Text("restore_note".localize(appLanguage)) },
                     onClick = { onRestore(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Restore, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete Permanently", color = Color.Red) },
+                    text = { Text("delete_permanently".localize(appLanguage), color = Color.Red) },
                     onClick = { onDeletePermanently(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.DeleteForever, null, tint = Color.Red) }
                 )

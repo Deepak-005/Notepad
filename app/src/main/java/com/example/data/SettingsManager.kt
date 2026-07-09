@@ -15,6 +15,8 @@ class SettingsManager(context: Context) {
         private const val KEY_PIN_LOCK = "pin_lock"
         private const val KEY_PIN_CODE = "pin_code"
         private const val KEY_LAST_ACTIVE_TIME = "last_active_time"
+        private const val KEY_IS_LOGGED_IN = "is_logged_in"
+        private const val KEY_LOGGED_IN_PHONE = "logged_in_phone"
     }
 
     var theme: String
@@ -48,4 +50,41 @@ class SettingsManager(context: Context) {
     var lastActiveTime: Long
         get() = prefs.getLong(KEY_LAST_ACTIVE_TIME, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_ACTIVE_TIME, value).apply()
+
+    var isLoggedIn: Boolean
+        get() = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+        set(value) = prefs.edit().putBoolean(KEY_IS_LOGGED_IN, value).apply()
+
+    var loggedInPhone: String
+        get() = prefs.getString(KEY_LOGGED_IN_PHONE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LOGGED_IN_PHONE, value).apply()
+
+    // Active Profile properties
+    var activeProfileId: String
+        get() = prefs.getString("active_profile_id", "personal") ?: "personal"
+        set(value) = prefs.edit().putString("active_profile_id", value).apply()
+
+    fun getProfileName(id: String, default: String): String {
+        return prefs.getString("profile_name_$id", default) ?: default
+    }
+
+    fun setProfileName(id: String, name: String) {
+        prefs.edit().putString("profile_name_$id", name).apply()
+    }
+
+    fun getProfileEmoji(id: String, default: String): String {
+        return prefs.getString("profile_emoji_$id", default) ?: default
+    }
+
+    fun setProfileEmoji(id: String, emoji: String) {
+        prefs.edit().putString("profile_emoji_$id", emoji).apply()
+    }
+
+    fun getProfileColor(id: String, default: String): String {
+        return prefs.getString("profile_color_$id", default) ?: default
+    }
+
+    fun setProfileColor(id: String, colorHex: String) {
+        prefs.edit().putString("profile_color_$id", colorHex).apply()
+    }
 }

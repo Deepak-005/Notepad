@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Note
+import com.example.ui.localization.localize
 import com.example.ui.viewmodel.NoteViewModel
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -40,6 +41,7 @@ fun NoteEditorScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val appLanguage by viewModel.appLanguage.collectAsState()
     var note by remember { mutableStateOf<Note?>(null) }
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
@@ -124,7 +126,7 @@ fun NoteEditorScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (noteId == -1) "New Note" else "Edit Note",
+                            if (noteId == -1) "new_note".localize(appLanguage) else "edit_note".localize(appLanguage),
                             fontWeight = FontWeight.Bold,
                             fontFamily = getFontFamily(viewModel.settingsManager.fontFamily)
                         )
@@ -135,7 +137,7 @@ fun NoteEditorScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
                                 Icons.Default.CloudQueue,
-                                contentDescription = "Saved Offline",
+                                contentDescription = "saved_offline".localize(appLanguage),
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -177,7 +179,7 @@ fun NoteEditorScreen(
                         onDismissRequest = { showMoreMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Export as TXT") },
+                            text = { Text("export_txt".localize(appLanguage)) },
                             onClick = {
                                 note?.let { viewModel.exportAsTxt(it.copy(title = title, content = content, category = category, tags = tags)) }
                                 showMoreMenu = false
@@ -185,7 +187,7 @@ fun NoteEditorScreen(
                             leadingIcon = { Icon(Icons.Default.Description, null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Export as PDF") },
+                            text = { Text("export_pdf".localize(appLanguage)) },
                             onClick = {
                                 note?.let { viewModel.exportAsPdf(it.copy(title = title, content = content, category = category, tags = tags)) }
                                 showMoreMenu = false
@@ -193,7 +195,7 @@ fun NoteEditorScreen(
                             leadingIcon = { Icon(Icons.Default.PictureAsPdf, null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Duplicate") },
+                            text = { Text("duplicate".localize(appLanguage)) },
                             onClick = {
                                 note?.let { viewModel.duplicateNote(it.copy(title = title, content = content, category = category, tags = tags)) }
                                 showMoreMenu = false
@@ -203,7 +205,7 @@ fun NoteEditorScreen(
                         )
                         Divider()
                         DropdownMenuItem(
-                            text = { Text("Delete Note", color = Color.Red) },
+                            text = { Text("delete_note".localize(appLanguage), color = Color.Red) },
                             onClick = {
                                 note?.let { viewModel.trashNote(it) }
                                 showMoreMenu = false
@@ -239,7 +241,7 @@ fun NoteEditorScreen(
                 ) {
                     SuggestionChip(
                         onClick = { showCategoryDialog = true },
-                        label = { Text("Folder: $category") },
+                        label = { Text("${"folder_label".localize(appLanguage)}: $category") },
                         icon = { Icon(Icons.Default.Folder, null, modifier = Modifier.size(16.dp)) }
                     )
 
@@ -272,7 +274,7 @@ fun NoteEditorScreen(
                     TextField(
                         value = title,
                         onValueChange = { title = it },
-                        placeholder = { Text("Title", fontSize = 22.sp, fontWeight = FontWeight.Bold) },
+                        placeholder = { Text("title_placeholder".localize(appLanguage), fontSize = 22.sp, fontWeight = FontWeight.Bold) },
                         textStyle = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontFamily = getFontFamily(viewModel.settingsManager.fontFamily)
@@ -290,7 +292,7 @@ fun NoteEditorScreen(
                     )
                 } else {
                     Text(
-                        text = title.ifEmpty { "Untitled" },
+                        text = title.ifEmpty { "untitled".localize(appLanguage) },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         fontFamily = getFontFamily(viewModel.settingsManager.fontFamily),
@@ -303,7 +305,7 @@ fun NoteEditorScreen(
                     OutlinedTextField(
                         value = tags,
                         onValueChange = { tags = it },
-                        placeholder = { Text("Tags (comma separated, e.g. life, work)") },
+                        placeholder = { Text("tags_placeholder".localize(appLanguage)) },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -338,8 +340,8 @@ fun NoteEditorScreen(
                 ) {
                     val words = if (content.isBlank()) 0 else content.trim().split("\\s+".toRegex()).size
                     val chars = content.length
-                    Text("Words: $words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                    Text("Characters: $chars", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text("${"words_label".localize(appLanguage)}: $words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text("${"characters_label".localize(appLanguage)}: $chars", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -349,7 +351,7 @@ fun NoteEditorScreen(
                     TextField(
                         value = content,
                         onValueChange = { content = it },
-                        placeholder = { Text("Start typing notes...", style = MaterialTheme.typography.bodyLarge) },
+                        placeholder = { Text("content_placeholder".localize(appLanguage), style = MaterialTheme.typography.bodyLarge) },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                             fontFamily = getFontFamily(viewModel.settingsManager.fontFamily),
                             fontSize = when (viewModel.settingsManager.fontSize) {
@@ -371,7 +373,7 @@ fun NoteEditorScreen(
                             .testTag("note_content_input")
                     )
                 } else {
-                    MarkdownView(content = content, fontFamilyStr = viewModel.settingsManager.fontFamily)
+                    MarkdownView(content = content, fontFamilyStr = viewModel.settingsManager.fontFamily, appLanguage = appLanguage)
                 }
             }
 
@@ -416,7 +418,7 @@ fun NoteEditorScreen(
     if (showCategoryDialog) {
         AlertDialog(
             onDismissRequest = { showCategoryDialog = false },
-            title = { Text("Choose Folder Category") },
+            title = { Text("choose_folder_category".localize(appLanguage)) },
             text = {
                 Column {
                     categories.forEach { cat ->
@@ -441,7 +443,7 @@ fun NoteEditorScreen(
                     OutlinedTextField(
                         value = newCat,
                         onValueChange = { newCat = it },
-                        label = { Text("Create New Category") },
+                        label = { Text("create_category_label".localize(appLanguage)) },
                         trailingIcon = {
                             IconButton(onClick = {
                                 if (newCat.isNotBlank()) {
@@ -460,7 +462,7 @@ fun NoteEditorScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showCategoryDialog = false }) {
-                    Text("Cancel")
+                    Text("cancel".localize(appLanguage))
                 }
             }
         )
@@ -468,14 +470,14 @@ fun NoteEditorScreen(
 }
 
 @Composable
-fun MarkdownView(content: String, fontFamilyStr: String) {
+fun MarkdownView(content: String, fontFamilyStr: String, appLanguage: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
     ) {
         if (content.isEmpty()) {
-            Text("No content written yet.", style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+            Text("no_content_written".localize(appLanguage), style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
         } else {
             // Super simple custom rendering of Markdown tags in Jetpack Compose
             val lines = content.split("\n")

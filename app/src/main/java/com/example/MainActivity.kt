@@ -66,9 +66,12 @@ class MainActivity : ComponentActivity() {
             }
 
             MyApplicationTheme(darkTheme = darkTheme) {
+                val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
 
-                if (isAppLocked) {
+                if (!isLoggedIn) {
+                    LoginScreen(viewModel = viewModel)
+                } else if (isAppLocked) {
                     LockScreen(viewModel = viewModel)
                 } else {
                     MainAppContent(viewModel = viewModel)
@@ -107,6 +110,7 @@ fun MainAppContent(viewModel: NoteViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
 
     // Hide navigation bar when entering the distraction-free Editor
     val shouldShowBottomBar = when {
@@ -181,10 +185,21 @@ fun MainAppContent(viewModel: NoteViewModel) {
                             }
                         },
                         icon = {
-                            Icon(
-                                if (currentRoute == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
-                                contentDescription = "Settings"
-                            )
+                            if (updateState is com.example.ui.viewmodel.UpdateState.UpdateAvailable) {
+                                BadgedBox(
+                                    badge = { Badge() }
+                                ) {
+                                    Icon(
+                                        if (currentRoute == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                        contentDescription = "Settings"
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    if (currentRoute == "settings") Icons.Filled.Settings else Icons.Outlined.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            }
                         },
                         label = { Text("Settings") }
                     )

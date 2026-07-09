@@ -13,6 +13,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.example.ui.viewmodel.UserProfile
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.SortByAlpha
@@ -31,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.Note
+import com.example.ui.localization.localize
 import com.example.ui.viewmodel.NoteViewModel
 import com.example.ui.viewmodel.SortOrder
 import java.text.SimpleDateFormat
@@ -43,6 +53,7 @@ fun NoteListScreen(
     onNavigateToEditor: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val appLanguage by viewModel.appLanguage.collectAsState()
     val notes by viewModel.notes.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val tags by viewModel.tags.collectAsState()
@@ -55,16 +66,75 @@ fun NoteListScreen(
     var showSortMenu by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
 
+    val activeProfileId by viewModel.activeProfileId.collectAsState()
+    val profiles by viewModel.userProfiles.collectAsState()
+
+    var profileToAuthorize by remember { mutableStateOf<UserProfile?>(null) }
+    var pinInputText by remember { mutableStateOf("") }
+    var pinInputError by remember { mutableStateOf(false) }
+
+    var profileToCustomize by remember { mutableStateOf<UserProfile?>(null) }
+    var editNameText by remember { mutableStateOf("") }
+    var editEmojiText by remember { mutableStateOf("") }
+    var editColorHex by remember { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 LargeTopAppBar(
                     title = {
                         Text(
-                            "Offline Notepad",
+                            "app_name".localize(appLanguage),
                             fontWeight = FontWeight.Bold,
                             fontFamily = getFontFamily(viewModel.settingsManager.fontFamily)
                         )
+                    },
+                    navigationIcon = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(start = 16.dp, end = 8.dp)
+                        ) {
+                            profiles.forEach { profile ->
+                                val isActive = activeProfileId == profile.id
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(android.graphics.Color.parseColor(profile.colorHex)))
+                                        .border(
+                                            width = if (isActive) 2.5.dp else 1.dp,
+                                            color = if (isActive) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.5f),
+                                            shape = CircleShape
+                                        )
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (profile.id == "secure" && viewModel.settingsManager.pinLockEnabled) {
+                                                    profileToAuthorize = profile
+                                                    pinInputText = ""
+                                                    pinInputError = false
+                                                } else {
+                                                    viewModel.selectProfile(profile.id)
+                                                }
+                                            },
+                                            onLongClick = {
+                                                profileToCustomize = profile
+                                                editNameText = profile.name
+                                                editEmojiText = profile.emoji
+                                                editColorHex = profile.colorHex
+                                            }
+                                        )
+                                        .testTag("profile_icon_${profile.id}"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = profile.emoji,
+                                        fontSize = 18.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
                     },
                     actions = {
                         IconButton(
@@ -87,7 +157,7 @@ fun NoteListScreen(
                             onDismissRequest = { showSortMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Last Modified (Newest)") },
+                                text = { Text("sort_modified_desc".localize(appLanguage)) },
                                 onClick = {
                                     viewModel.sortOrder.value = SortOrder.MODIFIED_DESC
                                     showSortMenu = false
@@ -95,7 +165,7 @@ fun NoteListScreen(
                                 leadingIcon = { Icon(Icons.Default.ArrowDownward, null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Last Modified (Oldest)") },
+                                text = { Text("sort_modified_asc".localize(appLanguage)) },
                                 onClick = {
                                     viewModel.sortOrder.value = SortOrder.MODIFIED_ASC
                                     showSortMenu = false
@@ -103,7 +173,7 @@ fun NoteListScreen(
                                 leadingIcon = { Icon(Icons.Default.ArrowUpward, null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Created (Newest)") },
+                                text = { Text("sort_newest".localize(appLanguage)) },
                                 onClick = {
                                     viewModel.sortOrder.value = SortOrder.NEWEST
                                     showSortMenu = false
@@ -111,7 +181,7 @@ fun NoteListScreen(
                                 leadingIcon = { Icon(Icons.Default.DateRange, null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Title A-Z") },
+                                text = { Text("sort_title_asc".localize(appLanguage)) },
                                 onClick = {
                                     viewModel.sortOrder.value = SortOrder.TITLE_ASC
                                     showSortMenu = false
@@ -126,7 +196,7 @@ fun NoteListScreen(
                 OutlinedTextField(
                     value = searchText,
                     onValueChange = { viewModel.searchText.value = it },
-                    placeholder = { Text("Search your notes...") },
+                    placeholder = { Text("search_placeholder".localize(appLanguage)) },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     trailingIcon = {
                         if (searchText.isNotEmpty()) {
@@ -158,7 +228,7 @@ fun NoteListScreen(
                         FilterChip(
                             selected = selectedCategory == "All",
                             onClick = { viewModel.selectedCategory.value = "All" },
-                            label = { Text("All Notes") }
+                            label = { Text("all_notes".localize(appLanguage)) }
                         )
                     }
                     items(categories) { cat ->
@@ -190,7 +260,7 @@ fun NoteListScreen(
                 .padding(padding)
         ) {
             if (notes.isEmpty()) {
-                EmptyNotesPlaceholder()
+                EmptyNotesPlaceholder(appLanguage)
             } else {
                 if (isGridView) {
                     LazyVerticalGrid(
@@ -210,7 +280,8 @@ fun NoteListScreen(
                                 onArchive = { viewModel.archiveNote(note) },
                                 onTrash = { viewModel.trashNote(note) },
                                 fontSizeStr = viewModel.settingsManager.fontSize,
-                                fontFamilyStr = viewModel.settingsManager.fontFamily
+                                fontFamilyStr = viewModel.settingsManager.fontFamily,
+                                appLanguage = appLanguage
                             )
                         }
                     }
@@ -230,7 +301,8 @@ fun NoteListScreen(
                                 onArchive = { viewModel.archiveNote(note) },
                                 onTrash = { viewModel.trashNote(note) },
                                 fontSizeStr = viewModel.settingsManager.fontSize,
-                                fontFamilyStr = viewModel.settingsManager.fontFamily
+                                fontFamilyStr = viewModel.settingsManager.fontFamily,
+                                appLanguage = appLanguage
                             )
                         }
                     }
@@ -238,10 +310,214 @@ fun NoteListScreen(
             }
         }
     }
+
+    if (profileToAuthorize != null) {
+        AlertDialog(
+            onDismissRequest = { profileToAuthorize = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "enter_pin_title".localize(appLanguage))
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "enter_pin_msg".localize(appLanguage),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = pinInputText,
+                        onValueChange = {
+                            if (it.all { char -> char.isDigit() }) {
+                                pinInputText = it
+                                pinInputError = false
+                            }
+                        },
+                        label = { Text("verification_code".localize(appLanguage)) },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        isError = pinInputError,
+                        modifier = Modifier.fillMaxWidth().testTag("profile_pin_input")
+                    )
+                    if (pinInputError) {
+                        Text(
+                            text = "incorrect_pin".localize(appLanguage),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (pinInputText == viewModel.settingsManager.pinCode) {
+                            viewModel.selectProfile(profileToAuthorize!!.id)
+                            profileToAuthorize = null
+                        } else {
+                            pinInputError = true
+                        }
+                    },
+                    modifier = Modifier.testTag("confirm_profile_pin_button")
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { profileToAuthorize = null }) {
+                    Text("cancel".localize(appLanguage))
+                }
+            }
+        )
+    }
+
+    if (profileToCustomize != null) {
+        AlertDialog(
+            onDismissRequest = { profileToCustomize = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "customize_profile_title".localize(appLanguage))
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = editNameText,
+                        onValueChange = { editNameText = it },
+                        label = { Text("profile_name_label".localize(appLanguage)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("edit_profile_name")
+                    )
+
+                    Text(
+                        text = "profile_emoji_label".localize(appLanguage),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val emojiPresets = listOf("😊", "💼", "🔒", "🚀", "🎨", "🎮", "🌟", "📚", "🏖️", "🐱")
+                        items(emojiPresets) { emoji ->
+                            val isSelected = editEmojiText == emoji
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                                    .clickable { editEmojiText = emoji }
+                                    .padding(4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(emoji, fontSize = 20.sp)
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "profile_color_label".localize(appLanguage),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val colorPresets = listOf(
+                            "#42A5F5" to "Blue",
+                            "#26A69A" to "Teal",
+                            "#AB47BC" to "Purple",
+                            "#FF7043" to "Coral",
+                            "#9CCC65" to "Green",
+                            "#FFCA28" to "Amber",
+                            "#EC407A" to "Pink"
+                        )
+                        items(colorPresets) { (hex, name) ->
+                            val isSelected = editColorHex.equals(hex, ignoreCase = true)
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(android.graphics.Color.parseColor(hex)))
+                                    .border(
+                                        width = if (isSelected) 3.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.outline else Color.White.copy(alpha = 0.5f),
+                                        shape = CircleShape
+                                    )
+                                    .clickable { editColorHex = hex }
+                            )
+                        }
+                    }
+                    
+                    Text(
+                        text = "long_press_customize".localize(appLanguage),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editNameText.isNotBlank() && editEmojiText.isNotBlank()) {
+                            viewModel.updateProfile(
+                                id = profileToCustomize!!.id,
+                                name = editNameText,
+                                emoji = editEmojiText,
+                                colorHex = editColorHex
+                            )
+                            profileToCustomize = null
+                        }
+                    },
+                    modifier = Modifier.testTag("save_profile_button")
+                ) {
+                    Text("save".localize(appLanguage))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { profileToCustomize = null }) {
+                    Text("cancel".localize(appLanguage))
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun EmptyNotesPlaceholder() {
+fun EmptyNotesPlaceholder(appLanguage: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -257,14 +533,14 @@ fun EmptyNotesPlaceholder() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No notes found",
+            text = "no_notes_title".localize(appLanguage),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Tap the '+' button below to create your very first secure offline note.",
+            text = "no_notes_desc".localize(appLanguage),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.outline,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -283,7 +559,8 @@ fun NoteGridItem(
     onArchive: () -> Unit,
     onTrash: () -> Unit,
     fontSizeStr: String,
-    fontFamilyStr: String
+    fontFamilyStr: String,
+    appLanguage: String
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val cardBg = getNoteColor(note.colorName)
@@ -310,7 +587,7 @@ fun NoteGridItem(
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = note.title.ifEmpty { "Untitled" },
+                    text = note.title.ifEmpty { "untitled".localize(appLanguage) },
                     style = getTitleStyle(fontSizeStr),
                     fontWeight = FontWeight.Bold,
                     fontFamily = getFontFamily(fontFamilyStr),
@@ -377,28 +654,28 @@ fun NoteGridItem(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text(if (note.isPinned) "Unpin" else "Pin") },
+                    text = { Text(if (note.isPinned) "unpin".localize(appLanguage) else "pin".localize(appLanguage)) },
                     onClick = { onTogglePin(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.PushPin, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text(if (note.isFavorite) "Remove Favorite" else "Add Favorite") },
+                    text = { Text(if (note.isFavorite) "remove_favorite".localize(appLanguage) else "add_favorite".localize(appLanguage)) },
                     onClick = { onToggleFavorite(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Favorite, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Duplicate") },
+                    text = { Text("duplicate".localize(appLanguage)) },
                     onClick = { onDuplicate(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Archive") },
+                    text = { Text("archive".localize(appLanguage)) },
                     onClick = { onArchive(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Archive, null) }
                 )
                 Divider()
                 DropdownMenuItem(
-                    text = { Text("Delete", color = Color.Red) },
+                    text = { Text("delete".localize(appLanguage), color = Color.Red) },
                     onClick = { onTrash(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
                 )
@@ -418,7 +695,8 @@ fun NoteListItem(
     onArchive: () -> Unit,
     onTrash: () -> Unit,
     fontSizeStr: String,
-    fontFamilyStr: String
+    fontFamilyStr: String,
+    appLanguage: String
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val cardBg = getNoteColor(note.colorName)
@@ -444,7 +722,7 @@ fun NoteListItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = note.title.ifEmpty { "Untitled" },
+                        text = note.title.ifEmpty { "untitled".localize(appLanguage) },
                         style = getTitleStyle(fontSizeStr),
                         fontWeight = FontWeight.Bold,
                         fontFamily = getFontFamily(fontFamilyStr),
@@ -495,28 +773,28 @@ fun NoteListItem(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text(if (note.isPinned) "Unpin" else "Pin") },
+                    text = { Text(if (note.isPinned) "unpin".localize(appLanguage) else "pin".localize(appLanguage)) },
                     onClick = { onTogglePin(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.PushPin, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text(if (note.isFavorite) "Remove Favorite" else "Add Favorite") },
+                    text = { Text(if (note.isFavorite) "remove_favorite".localize(appLanguage) else "add_favorite".localize(appLanguage)) },
                     onClick = { onToggleFavorite(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Favorite, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Duplicate") },
+                    text = { Text("duplicate".localize(appLanguage)) },
                     onClick = { onDuplicate(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Archive") },
+                    text = { Text("archive".localize(appLanguage)) },
                     onClick = { onArchive(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Archive, null) }
                 )
                 Divider()
                 DropdownMenuItem(
-                    text = { Text("Delete", color = Color.Red) },
+                    text = { Text("delete".localize(appLanguage), color = Color.Red) },
                     onClick = { onTrash(); showMenu = false },
                     leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
                 )

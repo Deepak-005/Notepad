@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.localization.localize
 import com.example.ui.viewmodel.NoteViewModel
 
 @Composable
@@ -26,6 +27,7 @@ fun LockScreen(
     viewModel: NoteViewModel,
     modifier: Modifier = Modifier
 ) {
+    val appLanguage by viewModel.appLanguage.collectAsState()
     var pinEntered by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
@@ -49,14 +51,14 @@ fun LockScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Notes are Secured",
+                text = "notes_secured".localize(appLanguage),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Please enter your 4-digit security PIN to unlock.",
+                text = "enter_pin".localize(appLanguage),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline
             )
@@ -125,11 +127,11 @@ fun LockScreen(
                                         if (pinEntered.length == 4) {
                                             val success = viewModel.unlockApp(pinEntered)
                                             if (!success) {
-                                                errorMessage = "Incorrect PIN. Please try again."
+                                                errorMessage = "incorrect_pin".localize(appLanguage)
                                                 pinEntered = ""
                                             }
                                         } else {
-                                            errorMessage = "Please enter a 4-digit PIN."
+                                            errorMessage = "enter_4_digit".localize(appLanguage)
                                         }
                                     }
                                     else -> {
@@ -140,7 +142,7 @@ fun LockScreen(
                                             if (pinEntered.length == 4) {
                                                 val success = viewModel.unlockApp(pinEntered)
                                                 if (!success) {
-                                                    errorMessage = "Incorrect PIN."
+                                                    errorMessage = "incorrect_pin".localize(appLanguage)
                                                     pinEntered = ""
                                                 }
                                             }
