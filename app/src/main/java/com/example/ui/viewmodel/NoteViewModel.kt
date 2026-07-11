@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import com.example.util.CryptoUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.*
@@ -359,6 +360,89 @@ class NoteViewModel(
                 Toast.makeText(app, "Backup saved to Downloads: $fileName", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
                 Toast.makeText(app, "Backup failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Encrypted JSON Backup to File
+    fun exportEncryptedBackup(password: String) {
+        viewModelScope.launch {
+            try {
+                val allNotes = repository.getAllNotesDirect()
+                val jsonArray = JSONArray()
+                for (note in allNotes) {
+                    val jsonObj = JSONObject().apply {
+                        put("title", note.title)
+                        put("content", note.content)
+                        put("createdAt", note.createdAt)
+                        put("modifiedAt", note.modifiedAt)
+                        put("isPinned", note.isPinned)
+                        put("isFavorite", note.isFavorite)
+                        put("isArchived", note.isArchived)
+                        put("isTrashed", note.isTrashed)
+                        put("colorName", note.colorName)
+                        put("category", note.category)
+                        put("tags", note.tags)
+                    }
+                    jsonArray.put(jsonObj)
+                }
+
+                val plainJson = jsonArray.toString(2)
+                val encryptedText = CryptoUtils.encrypt(plainJson, password)
+
+                val fileName = "OfflineNotepad_Encrypted_Backup_${System.currentTimeMillis()}.json"
+                val file = File(app.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+                FileOutputStream(file).use { out ->
+                    out.write(encryptedText.toByteArray(Charsets.UTF_8))
+                }
+
+                val uri = FileProvider.getUriForFile(app, "${app.packageName}.provider", file)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                val chooser = Intent.createChooser(intent, "Share Encrypted Notes Backup").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                app.startActivity(chooser)
+                Toast.makeText(app, "Encrypted backup saved: $fileName", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(app, "Encrypted backup failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Restore from Encrypted Backup JSON
+    fun restoreFromEncryptedBackupJson(encryptedJsonString: String, password: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val decryptedJson = CryptoUtils.decrypt(encryptedJsonString.trim(), password)
+                val jsonArray = JSONArray(decryptedJson)
+                var count = 0
+                for (i in 0 until jsonArray.length()) {
+                    val jsonObj = jsonArray.getJSONObject(i)
+                    val note = Note(
+                        title = jsonObj.optString("title", "Untitled"),
+                        content = jsonObj.optString("content", ""),
+                        createdAt = jsonObj.optLong("createdAt", System.currentTimeMillis()),
+                        modifiedAt = jsonObj.optLong("modifiedAt", System.currentTimeMillis()),
+                        isPinned = jsonObj.optBoolean("isPinned", false),
+                        isFavorite = jsonObj.optBoolean("isFavorite", false),
+                        isArchived = jsonObj.optBoolean("isArchived", false),
+                        isTrashed = jsonObj.optBoolean("isTrashed", false),
+                        colorName = jsonObj.optString("colorName", "Default"),
+                        category = jsonObj.optString("category", "General"),
+                        tags = jsonObj.optString("tags", "")
+                    )
+                    repository.insertNote(note)
+                    count++
+                }
+                Toast.makeText(app, "Successfully restored $count notes!", Toast.LENGTH_LONG).show()
+                onComplete(true)
+            } catch (e: Exception) {
+                Toast.makeText(app, "Restore failed: Invalid password or corrupted file", Toast.LENGTH_LONG).show()
+                onComplete(false)
             }
         }
     }

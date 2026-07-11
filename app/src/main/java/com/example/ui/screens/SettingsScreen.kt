@@ -49,6 +49,39 @@ fun SettingsScreen(
     var pinInput by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf("") }
 
+    var showExportPasswordDialog by remember { mutableStateOf(false) }
+    var exportPasswordInput by remember { mutableStateOf("") }
+    var exportPasswordError by remember { mutableStateOf("") }
+
+    var showImportPasswordDialog by remember { mutableStateOf(false) }
+    var importPasswordInput by remember { mutableStateOf("") }
+    var importPasswordError by remember { mutableStateOf("") }
+    var pendingImportContent by remember { mutableStateOf("") }
+
+    // Encrypted JSON file picker launcher
+    val encryptedFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val reader = BufferedReader(InputStreamReader(inputStream))
+                val stringBuilder = StringBuilder()
+                var line: String? = reader.readLine()
+                while (line != null) {
+                    stringBuilder.append(line)
+                    line = reader.readLine()
+                }
+                inputStream?.close()
+
+                pendingImportContent = stringBuilder.toString()
+                showImportPasswordDialog = true
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to read backup: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     // JSON file picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -294,6 +327,28 @@ fun SettingsScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
+            // Backup Encrypted button
+            Card(
+                onClick = { showExportPasswordDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .testTag("backup_encrypted_notes_button"),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.EnhancedEncryption, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("backup_encrypted".localize(appLanguage), fontWeight = FontWeight.Bold)
+                        Text("backup_encrypted_desc".localize(appLanguage), fontSize = 12.sp)
+                    }
+                }
+            }
+
             // Backup button
             Card(
                 onClick = { viewModel.backupToBackupFile() },
@@ -312,6 +367,28 @@ fun SettingsScreen(
                     Column {
                         Text("backup_json".localize(appLanguage), fontWeight = FontWeight.Bold)
                         Text("backup_json_desc".localize(appLanguage), fontSize = 12.sp)
+                    }
+                }
+            }
+
+            // Restore Encrypted button
+            Card(
+                onClick = { encryptedFilePickerLauncher.launch("*/*") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .testTag("restore_encrypted_notes_button"),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.NoEncryption, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("restore_encrypted".localize(appLanguage), fontWeight = FontWeight.Bold)
+                        Text("restore_encrypted_desc".localize(appLanguage), fontSize = 12.sp)
                     }
                 }
             }
@@ -580,6 +657,128 @@ fun SettingsScreen(
                     onClick = {
                         showPinDialog = false
                         pinLockEnabled = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Export Encrypted Backup Password Dialog
+    if (showExportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showExportPasswordDialog = false
+                exportPasswordInput = ""
+                exportPasswordError = ""
+            },
+            title = { Text("Export Encrypted Backup") },
+            text = {
+                Column {
+                    Text("Enter a password to encrypt your notes backup file. You will need this password to restore your notes.")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = exportPasswordInput,
+                        onValueChange = { exportPasswordInput = it },
+                        label = { Text("Backup Password") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("export_password_input")
+                    )
+                    if (exportPasswordError.isNotEmpty()) {
+                        Text(exportPasswordError, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (exportPasswordInput.length >= 4) {
+                            viewModel.exportEncryptedBackup(exportPasswordInput)
+                            showExportPasswordDialog = false
+                            exportPasswordInput = ""
+                            exportPasswordError = ""
+                        } else {
+                            exportPasswordError = "Password must be at least 4 characters."
+                        }
+                    },
+                    modifier = Modifier.testTag("export_password_confirm_button")
+                ) {
+                    Text("Export")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showExportPasswordDialog = false
+                        exportPasswordInput = ""
+                        exportPasswordError = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Import Encrypted Backup Password Dialog
+    if (showImportPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showImportPasswordDialog = false
+                importPasswordInput = ""
+                importPasswordError = ""
+                pendingImportContent = ""
+            },
+            title = { Text("Import Encrypted Backup") },
+            text = {
+                Column {
+                    Text("Enter the password to decrypt and restore your notes backup file.")
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = importPasswordInput,
+                        onValueChange = { importPasswordInput = it },
+                        label = { Text("Backup Password") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("import_password_input")
+                    )
+                    if (importPasswordError.isNotEmpty()) {
+                        Text(importPasswordError, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (importPasswordInput.isNotEmpty()) {
+                            viewModel.restoreFromEncryptedBackupJson(pendingImportContent, importPasswordInput) { success ->
+                                if (success) {
+                                    showImportPasswordDialog = false
+                                    importPasswordInput = ""
+                                    importPasswordError = ""
+                                    pendingImportContent = ""
+                                } else {
+                                    importPasswordError = "Decryption failed. Please check the password."
+                                }
+                            }
+                        } else {
+                            importPasswordError = "Please enter the backup password."
+                        }
+                    },
+                    modifier = Modifier.testTag("import_password_confirm_button")
+                ) {
+                    Text("Import")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImportPasswordDialog = false
+                        importPasswordInput = ""
+                        importPasswordError = ""
+                        pendingImportContent = ""
                     }
                 ) {
                     Text("Cancel")
