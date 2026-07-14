@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Settings
@@ -31,6 +33,7 @@ import androidx.navigation.navArgument
 import com.example.data.NoteDatabase
 import com.example.data.NoteRepository
 import com.example.data.SettingsManager
+import com.example.ui.localization.localize
 import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.NoteViewModel
@@ -111,6 +114,7 @@ fun MainAppContent(viewModel: NoteViewModel) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
 
     // Hide navigation bar when entering the distraction-free Editor
     val shouldShowBottomBar = when {
@@ -174,6 +178,23 @@ fun MainAppContent(viewModel: NoteViewModel) {
                             )
                         },
                         label = { Text("Trash") }
+                    )
+                    NavigationBarItem(
+                        selected = currentRoute == "statistics",
+                        onClick = {
+                            if (currentRoute != "statistics") {
+                                navController.navigate("statistics") {
+                                    popUpTo("note_list")
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                if (currentRoute == "statistics") Icons.Filled.BarChart else Icons.Outlined.BarChart,
+                                contentDescription = "statistics".localize(appLanguage)
+                            )
+                        },
+                        label = { Text("statistics".localize(appLanguage)) }
                     )
                     NavigationBarItem(
                         selected = currentRoute == "settings",
@@ -243,6 +264,9 @@ fun MainAppContent(viewModel: NoteViewModel) {
             }
             composable("trash") {
                 TrashScreen(viewModel = viewModel)
+            }
+            composable("statistics") {
+                StatisticsScreen(viewModel = viewModel)
             }
             composable("settings") {
                 SettingsScreen(viewModel = viewModel)

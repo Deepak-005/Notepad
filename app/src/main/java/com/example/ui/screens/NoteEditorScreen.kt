@@ -60,6 +60,8 @@ fun NoteEditorScreen(
     val categories by viewModel.categories.collectAsState()
     val focusManager = LocalFocusManager.current
 
+    var editorMode by remember { mutableStateOf("Chooser") }
+
     // Initialize Note
     LaunchedEffect(noteId) {
         if (noteId != -1) {
@@ -73,6 +75,14 @@ fun NoteEditorScreen(
                     colorName = it.colorName
                     isPinned = it.isPinned
                     isFavorite = it.isFavorite
+                    
+                    if (it.content.trim().startsWith("{\"type\":\"diagram\"")) {
+                        editorMode = "Diagram"
+                    } else if (it.content.trim().startsWith("{\"type\":\"rich_text\"") || it.category == "Document" || it.content.startsWith("#") || it.tags.contains("document")) {
+                        editorMode = "RichDoc"
+                    } else {
+                        editorMode = "Classic"
+                    }
                 }
             }
         } else {
@@ -85,6 +95,7 @@ fun NoteEditorScreen(
                 modifiedAt = System.currentTimeMillis()
             )
             note = newNote
+            editorMode = "Chooser"
         }
     }
 
@@ -118,6 +129,222 @@ fun NoteEditorScreen(
             }
             isSaving = false
         }
+    }
+
+    if (editorMode == "Diagram") {
+        DiagramEditorContent(
+            viewModel = viewModel,
+            note = note ?: Note(title = "", content = ""),
+            title = title,
+            onTitleChange = { title = it },
+            category = category,
+            onCategoryChange = { category = it },
+            tags = tags,
+            onTagsChange = { tags = it },
+            colorName = colorName,
+            onColorNameChange = { colorName = it },
+            initialContent = content,
+            onSaveContent = { content = it },
+            onNavigateBack = onNavigateBack
+        )
+        return
+    }
+
+    if (editorMode == "RichDoc") {
+        AiDocumentWriterContent(
+            viewModel = viewModel,
+            note = note ?: Note(title = "", content = ""),
+            title = title,
+            onTitleChange = { title = it },
+            category = category,
+            onCategoryChange = { category = it },
+            tags = tags,
+            onTagsChange = { tags = it },
+            colorName = colorName,
+            onColorNameChange = { colorName = it },
+            content = content,
+            onContentChange = { content = it },
+            onNavigateBack = onNavigateBack
+        )
+        return
+    }
+
+    if (editorMode == "Chooser") {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Select Editor Type", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Choose Your Canvas",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Select the optimal format to capture and supercharge your ideas offline.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Mode 1: AI Rich Document Writer
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            title = "AI Document Draft"
+                            category = "Document"
+                            tags = "ai, document"
+                            content = "# New Document\n\nWrite your thoughts with AI assistant support here..."
+                            editorMode = "RichDoc"
+                        }
+                        .padding(vertical = 8.dp)
+                        .testTag("choose_rich_doc_card"),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "AI Document",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "AI Document Writer",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Advanced markdown layout, formatting tools, and direct Gemini AI copilot editing.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+
+                // Mode 2: Visual Diagram Canvas
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            title = "New Diagram"
+                            category = "Diagram"
+                            tags = "vector, diagram"
+                            content = "{\"type\":\"diagram\",\"elements\":[],\"connections\":[],\"zoom\":1.0,\"panX\":0.0,\"panY\":0.0}"
+                            editorMode = "Diagram"
+                        }
+                        .padding(vertical = 8.dp)
+                        .testTag("choose_diagram_card"),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Hub,
+                            contentDescription = "Diagram Canvas",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "Visual Diagram Canvas",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Create flowcharts, mind maps, UML class structures, ER diagrams and export vectors.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+                }
+
+                // Mode 3: Classic plain notepad
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            title = ""
+                            category = "General"
+                            content = ""
+                            editorMode = "Classic"
+                        }
+                        .padding(vertical = 8.dp)
+                        .testTag("choose_classic_card"),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = "Classic Notepad",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "Standard Plain Scratchpad",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Quick, basic, lightweight plain text note format.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        return
     }
 
     Scaffold(

@@ -54,6 +54,10 @@ class NoteViewModel(
     private val _isAppLocked = MutableStateFlow(settingsManager.pinLockEnabled)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
 
+    // All active notes for stats calculation
+    val allActiveNotes: StateFlow<List<Note>> = repository.activeNotes
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Active Notes Stream
     val notes: StateFlow<List<Note>> = combine(
         repository.activeNotes,
